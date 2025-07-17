@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>IMPAS LiveStock</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+    <header>
+        <h1>IMPAS LiveStock</h1>
+        <div id="user-greeting"></div>
+        <button id="logout-btn" style="display:none;">Изход</button>
+    </header>
+
+    <section id="login-section">
+        <h2>Вход за служители</h2>
+        <input type="text" id="access-code" placeholder="Въведете код за достъп" />
+        <button id="login-btn">Влез</button>
+        <div id="login-error" style="color:red;"></div>
+    </section>
+
+    <section id="main-section" style="display:none;">
+        <h2>Добре дошли, <span id="user-name"></span>!</h2>
+        
+        <div id="inventory-section">
+            <h3>Продукти</h3>
+            <input type="text" id="search-product" placeholder="Търсене по код или име..." />
+            <table id="product-table">
+                <thead>
+                    <tr>
+                        <th>Код</th>
+                        <th>Име</th>
+                        <th>Цена (лв)</th>
+                        <th>Цена (евро)</th>
+                        <th>Наличност</th>
+                        <th>Снимка</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div id="chat-section">
+            <h3>Активни потребители</h3>
+            <ul id="active-users"></ul>
+            <div id="chat-window" style="display:none;">
+                <h4>Чат с <span id="chat-with"></span></h4>
+                <div id="chat-messages" style="height:200px; overflow-y:auto; border:1px solid #ccc; padding:5px;"></div>
+                <input type="text" id="chat-input" placeholder="Пиши съобщение..." />
+                <button id="send-chat-btn">Изпрати</button>
+                <button id="close-chat-btn">X</button>
+            </div>
+        </div>
+
+        <div id="admin-section" style="display:none;">
+            <h3>Административен панел</h3>
+            <button id="manage-users-btn">Управление на потребители</button>
+            <button id="view-history-btn">История на промените</button>
+        </div>
+
+        <div id="user-management" style="display:none;">
+            <h4>Потребители</h4>
+            <table id="users-table">
+                <thead>
+                    <tr>
+                        <th>Име</th>
+                        <th>Код за достъп</th>
+                        <th>Роли</th>
+                        <th>Права</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <button id="add-user-btn">Добави потребител</button>
+            <button id="close-user-management-btn">Затвори</button>
+        </div>
+
+        <div id="add-user-form" style="display:none;">
+            <h4>Добавяне на потребител</h4>
+            <input type="text" id="new-user-name" placeholder="Име" />
+            <input type="text" id="new-user-code" placeholder="Код за достъп" />
+            <select id="new-user-role">
+                <option value="worker">Работник</option>
+                <option value="admin">Админ</option>
+                <option value="adminPlus">Главен админ</option>
+            </select>
+            <button id="save-new-user-btn">Запази</button>
+            <button id="cancel-new-user-btn">Откажи</button>
+        </div>
+
+        <div id="history-section" style="display:none;">
+            <h4>История на промените</h4>
+            <table id="history-table">
+                <thead>
+                    <tr>
+                        <th>Дата и час</th>
+                        <th>Потребител</th>
+                        <th>Действие</th>
+                        <th>Опции</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <button id="close-history-btn">Затвори</button>
+        </div>
+    </section>
+
+    <script src="db.js"></script>
+    <script src="auth.js"></script>
+    <script src="app.js"></script>
+    <script src="chat.js"></script>
+    <script src="barcode.js"></script>
+</body>
+</html>
