@@ -3,16 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IMPAS LiveStock Pro</title>
+    <title>IMPAS LiveStock</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <!-- SheetJS за Excel импорт -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- QuaggaJS за сканиране на баркодове -->
+    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+    
     <style>
         :root {
             --primary: #2c3e50;
             --secondary: #3498db;
             --success: #27ae60;
             --danger: #e74c3c;
+            --warning: #f39c12;
             --light: #ecf0f1;
             --dark: #2c3e50;
             --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --sidebar-width: 250px;
         }
         
         * {
@@ -26,37 +36,91 @@
             background-color: #f5f7fa;
             color: #333;
             line-height: 1.6;
+            overflow-x: hidden;
         }
         
         .container {
             display: flex;
             min-height: 100vh;
+            position: relative;
+        }
+        
+        /* Login Screen */
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, var(--primary) 0%, #1a2a3a 100%);
+        }
+        
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 400px;
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .login-title {
+            text-align: center;
+            margin-bottom: 30px;
+            color: var(--primary);
+            font-size: 1.8rem;
+            font-weight: 600;
         }
         
         /* Sidebar */
         .sidebar {
-            width: 250px;
+            width: var(--sidebar-width);
             background: var(--primary);
             color: white;
             padding: 20px 0;
-            transition: all 0.3s;
             position: fixed;
             height: 100vh;
-            overflow-y: auto;
+            z-index: 100;
+            transition: transform 0.3s ease;
         }
         
         .sidebar-header {
             padding: 0 20px 20px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
         
         .sidebar-header h3 {
             color: white;
             font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .sidebar-header h3 i {
+            margin-right: 10px;
+        }
+        
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
         }
         
         .sidebar-menu {
             padding: 20px 0;
+            overflow-y: auto;
+            height: calc(100vh - 80px);
         }
         
         .menu-item {
@@ -65,6 +129,7 @@
             transition: all 0.3s;
             display: flex;
             align-items: center;
+            border-left: 4px solid transparent;
         }
         
         .menu-item:hover {
@@ -72,22 +137,26 @@
         }
         
         .menu-item.active {
-            background: var(--secondary);
+            background: rgba(255, 255, 255, 0.1);
+            border-left: 4px solid var(--secondary);
         }
         
         .menu-item i {
             margin-right: 10px;
             font-size: 1.1rem;
+            width: 20px;
+            text-align: center;
         }
         
         /* Main Content */
         .main-content {
             flex: 1;
-            margin-left: 250px;
+            margin-left: var(--sidebar-width);
             padding: 20px;
-            transition: all 0.3s;
+            transition: margin-left 0.3s ease;
         }
         
+        /* Header */
         .header {
             display: flex;
             justify-content: space-between;
@@ -102,6 +171,7 @@
         .user-info {
             display: flex;
             align-items: center;
+            position: relative;
         }
         
         .user-avatar {
@@ -115,14 +185,65 @@
             justify-content: center;
             margin-right: 10px;
             font-weight: bold;
+            cursor: pointer;
         }
         
+        .user-details {
+            cursor: pointer;
+        }
+        
+        .user-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            box-shadow: var(--shadow);
+            border-radius: 5px;
+            padding: 10px 0;
+            width: 200px;
+            z-index: 10;
+            display: none;
+        }
+        
+        .user-dropdown.show {
+            display: block;
+        }
+        
+        .user-dropdown-item {
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .user-dropdown-item:hover {
+            background: #f5f5f5;
+        }
+        
+        .user-dropdown-item.logout {
+            color: var(--danger);
+        }
+        
+        .logout-btn {
+            background: none;
+            border: none;
+            color: var(--danger);
+            cursor: pointer;
+            margin-left: 15px;
+            font-size: 1.2rem;
+            transition: transform 0.3s;
+        }
+        
+        .logout-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        /* Cards */
         .card {
             background: white;
-            border-radius: 5px;
+            border-radius: 10px;
             box-shadow: var(--shadow);
-            padding: 20px;
-            margin-bottom: 20px;
+            padding: 25px;
+            margin-bottom: 25px;
         }
         
         .card-header {
@@ -130,22 +251,36 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
-            padding-bottom: 10px;
+            padding-bottom: 15px;
             border-bottom: 1px solid #eee;
         }
         
         .card-title {
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             font-weight: 600;
+            color: var(--primary);
         }
         
+        /* Buttons */
         .btn {
-            padding: 8px 15px;
+            padding: 10px 20px;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
             font-weight: 500;
             transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn i {
+            margin-right: 8px;
+        }
+        
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.9rem;
         }
         
         .btn-primary {
@@ -155,6 +290,8 @@
         
         .btn-primary:hover {
             background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
         
         .btn-success {
@@ -162,76 +299,150 @@
             color: white;
         }
         
+        .btn-success:hover {
+            background: #219653;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
         .btn-danger {
             background: var(--danger);
             color: white;
         }
         
+        .btn-danger:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-warning {
+            background: var(--warning);
+            color: white;
+        }
+        
+        .btn-warning:hover {
+            background: #d35400;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Tables */
         .table-responsive {
             overflow-x: auto;
+            border-radius: 5px;
+            box-shadow: 0 0 0 1px #eee;
         }
         
         table {
             width: 100%;
             border-collapse: collapse;
+            min-width: 600px;
         }
         
         th, td {
-            padding: 12px 15px;
+            padding: 15px;
             text-align: left;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid #eee;
         }
         
         th {
             background: #f8f9fa;
             font-weight: 600;
+            color: var(--dark);
         }
         
         tr:hover {
-            background: #f5f5f5;
+            background: #f9f9f9;
         }
         
-        .badge {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-        
-        .badge-success {
-            background: #d4edda;
-            color: #155724;
-        }
-        
-        .badge-warning {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
-        .badge-danger {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        
+        /* Forms */
         .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
         
         .form-label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
             font-weight: 500;
+            color: var(--dark);
         }
         
         .form-control {
             width: 100%;
-            padding: 10px;
+            padding: 12px 15px;
             border: 1px solid #ddd;
-            border-radius: 4px;
+            border-radius: 6px;
             font-size: 1rem;
+            transition: border 0.3s;
         }
         
+        .form-control:focus {
+            border-color: var(--secondary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+        }
+        
+        /* Barcode styles */
+        .barcode-container {
+            margin-top: 10px;
+        }
+        
+        .barcode-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .barcode-value {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 8px;
+        }
+        
+        .barcode-actions {
+            display: flex;
+        }
+        
+        .barcode-btn {
+            padding: 6px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+        
+        /* Scanner modal */
+        .scanner-container {
+            width: 100%;
+            height: 300px;
+            background: #000;
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
+        #scanner-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 1.2rem;
+        }
+        
+        .scanner-actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        /* Modals */
         .modal {
             display: none;
             position: fixed;
@@ -247,16 +458,17 @@
         
         .modal-content {
             background: white;
-            border-radius: 5px;
+            border-radius: 10px;
             width: 90%;
             max-width: 600px;
             max-height: 90vh;
             overflow-y: auto;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 5px 30px rgba(0, 0, 0, 0.3);
+            animation: modalFadeIn 0.3s ease-out;
         }
         
         .modal-header {
-            padding: 15px 20px;
+            padding: 20px;
             border-bottom: 1px solid #eee;
             display: flex;
             justify-content: space-between;
@@ -264,15 +476,9 @@
         }
         
         .modal-title {
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             font-weight: 600;
-        }
-        
-        .close {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
+            color: var(--primary);
         }
         
         .modal-body {
@@ -284,140 +490,35 @@
             border-top: 1px solid #eee;
             display: flex;
             justify-content: flex-end;
+            gap: 10px;
         }
         
-        /* Scanner */
-        #scanner-container {
-            width: 100%;
-            margin: 20px 0;
-            position: relative;
+        .close {
+            font-size: 1.5rem;
+            color: #aaa;
+            cursor: pointer;
+            background: none;
+            border: none;
         }
         
-        #scanner-video {
-            width: 100%;
-            border-radius: 5px;
+        .close:hover {
+            color: #333;
         }
         
-        #scanner-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            pointer-events: none;
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         
-        .scanner-frame {
-            width: 70%;
-            height: 70%;
-            border: 4px solid var(--secondary);
-            border-radius: 5px;
-            box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5);
+        /* Confirmation modal */
+        .confirmation-modal .modal-content {
+            max-width: 400px;
         }
         
-        /* Chat */
-        .chat-container {
-            display: flex;
-            flex-direction: column;
-            height: 500px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-        
-        .chat-header {
-            padding: 15px;
-            background: var(--primary);
-            color: white;
-            border-top-left-radius: 5px;
-            border-top-right-radius: 5px;
-        }
-        
-        .chat-messages {
-            flex: 1;
-            padding: 15px;
-            overflow-y: auto;
-            background: #f9f9f9;
-        }
-        
-        .message {
-            margin-bottom: 15px;
-            max-width: 70%;
-            padding: 10px 15px;
-            border-radius: 18px;
-            position: relative;
-        }
-        
-        .message.sent {
-            background: var(--secondary);
-            color: white;
-            margin-left: auto;
-            border-bottom-right-radius: 5px;
-        }
-        
-        .message.received {
-            background: #e9ecef;
-            margin-right: auto;
-            border-bottom-left-radius: 5px;
-        }
-        
-        .message-sender {
-            font-weight: 600;
-            font-size: 0.8rem;
-            margin-bottom: 5px;
-        }
-        
-        .message-time {
-            font-size: 0.7rem;
-            opacity: 0.7;
-            text-align: right;
-            margin-top: 5px;
-        }
-        
-        .chat-input {
-            display: flex;
-            padding: 10px;
-            background: white;
-            border-top: 1px solid #ddd;
-            border-bottom-left-radius: 5px;
-            border-bottom-right-radius: 5px;
-        }
-        
-        .chat-input input {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 20px;
-            margin-right: 10px;
-        }
-        
-        /* Responsive */
-        @media (max-width: 768px) {
-            .container {
-                flex-direction: column;
-            }
-            
-            .sidebar {
-                width: 100%;
-                height: auto;
-                position: relative;
-            }
-            
-            .main-content {
-                margin-left: 0;
-            }
-        }
-        
-        /* Animations */
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        
-        .fade-in {
-            animation: fadeIn 0.3s ease-in-out;
+        .confirmation-message {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
         }
         
         /* Notification */
@@ -425,10 +526,10 @@
             position: fixed;
             top: 20px;
             right: 20px;
-            padding: 15px 20px;
+            padding: 15px 25px;
             background: var(--success);
             color: white;
-            border-radius: 5px;
+            border-radius: 8px;
             box-shadow: var(--shadow);
             z-index: 1100;
             display: flex;
@@ -443,74 +544,206 @@
         
         .notification i {
             margin-right: 10px;
+            font-size: 1.2rem;
         }
         
-        /* Tabs */
-        .tabs {
+        .notification.error {
+            background: var(--danger);
+        }
+        
+        .notification.warning {
+            background: var(--warning);
+        }
+        
+        /* Excel Import/Export */
+        .import-export-container {
             display: flex;
-            border-bottom: 1px solid #ddd;
-            margin-bottom: 20px;
+            gap: 10px;
+            margin-top: 15px;
         }
         
-        .tab {
-            padding: 10px 20px;
+        .file-input-label {
+            display: inline-flex;
+            align-items: center;
+            padding: 10px 15px;
+            background: var(--success);
+            color: white;
+            border-radius: 6px;
             cursor: pointer;
-            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
         }
         
-        .tab.active {
-            border-bottom-color: var(--secondary);
-            font-weight: 600;
+        .file-input-label:hover {
+            background: #219653;
+            transform: translateY(-2px);
         }
         
-        /* Loading spinner */
-        .spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255,255,255,.3);
+        #file-input {
+            display: none;
+        }
+        
+        /* Active Users */
+        .active-users {
+            margin-top: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+        }
+        
+        .active-users h3 {
+            margin-bottom: 15px;
+            color: var(--primary);
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .active-users h3 i {
+            margin-right: 10px;
+        }
+        
+        .active-user {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .active-user:last-child {
+            border-bottom: none;
+        }
+        
+        .active-user-avatar {
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
-            border-top-color: white;
-            animation: spin 1s ease-in-out infinite;
+            background: var(--secondary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-weight: bold;
         }
         
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        /* Responsive */
+        @media (max-width: 992px) {
+            .sidebar {
+                transform: translateX(-100%);
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100vh;
+            }
+            
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+            }
+            
+            .menu-toggle {
+                display: block;
+            }
+            
+            .header {
+                padding: 10px 15px;
+            }
+            
+            .card {
+                padding: 15px;
+            }
+            
+            .user-dropdown {
+                right: -20px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .login-box {
+                padding: 30px 20px;
+            }
+            
+            .btn {
+                padding: 8px 15px;
+                font-size: 0.9rem;
+            }
+            
+            th, td {
+                padding: 10px;
+            }
+            
+            .modal-content {
+                width: 95%;
+            }
+            
+            .card-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            
+            .import-export-container {
+                flex-direction: column;
+                width: 100%;
+            }
+            
+            .file-input-label {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .modal-footer {
+                flex-direction: column;
+            }
+            
+            .modal-footer .btn {
+                width: 100%;
+            }
         }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
-    <div class="container">
+    <!-- Login Screen -->
+    <div class="login-container" id="login-screen">
+        <div class="login-box">
+            <h2 class="login-title"><i class="fas fa-warehouse"></i> IMPAС Инвентар PRO</h2>
+            <div class="form-group">
+                <label class="form-label">Код за достъп</label>
+                <input type="password" class="form-control" id="access-code" placeholder="Въведете вашия код за достъп">
+            </div>
+            <button class="btn btn-primary" id="login-btn" style="width: 100%;">
+                <i class="fas fa-sign-in-alt"></i> Вход
+            </button>
+        </div>
+    </div>
+
+    <!-- Main App (initially hidden) -->
+    <div class="container" id="app-container" style="display: none;">
         <!-- Sidebar -->
-        <div class="sidebar">
+        <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <h3><i class="fas fa-warehouse"></i> IMPAС LiveStock</h3>
+                <h3><i class="fas fa-warehouse"></i> IMPAС</h3>
+                <button class="menu-toggle" id="menu-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
             </div>
             <div class="sidebar-menu">
-                <div class="menu-item active" data-section="dashboard">
-                    <i class="fas fa-tachometer-alt"></i> Табло
-                </div>
-                <div class="menu-item" data-section="products">
+                <div class="menu-item active" data-section="products">
                     <i class="fas fa-boxes"></i> Продукти
-                </div>
-                <div class="menu-item" data-section="scanner">
-                    <i class="fas fa-barcode"></i> Баркод скенер
-                </div>
-                <div class="menu-item" data-section="import">
-                    <i class="fas fa-file-import"></i> Импорт от Excel
                 </div>
                 <div class="menu-item" data-section="users">
                     <i class="fas fa-users"></i> Потребители
                 </div>
-                <div class="menu-item" data-section="chat">
-                    <i class="fas fa-comments"></i> Чат система
-                </div>
                 <div class="menu-item" data-section="history">
                     <i class="fas fa-history"></i> История
-                </div>
-                <div class="menu-item" data-section="settings">
-                    <i class="fas fa-cog"></i> Настройки
                 </div>
             </div>
         </div>
@@ -519,98 +752,50 @@
         <div class="main-content">
             <!-- Header -->
             <div class="header">
-                <h2 id="section-title">Табло</h2>
+                <button class="btn btn-primary menu-toggle" id="mobile-menu-toggle" style="display: none;">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h2 id="section-title">Продукти</h2>
                 <div class="user-info">
-                    <div class="user-avatar">Т</div>
-                    <div>
-                        <div class="user-name">Здравейте, Теодор</div>
-                        <div class="user-role">Admin+</div>
+                    <div class="user-avatar" id="user-avatar">А</div>
+                    <div class="user-details">
+                        <div class="user-name" id="user-name">Администратор</div>
+                        <div class="user-role" id="user-role">Admin</div>
                     </div>
-                </div>
-            </div>
-
-            <!-- Dashboard Section -->
-            <div class="section-content" id="dashboard-section">
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Статистика</div>
-                    </div>
-                    <div class="card-body">
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
-                            <div class="stat-card">
-                                <h3>Общо продукти</h3>
-                                <p class="stat-value">142</p>
-                            </div>
-                            <div class="stat-card">
-                                <h3>Наличности под 5</h3>
-                                <p class="stat-value">8</p>
-                            </div>
-                            <div class="stat-card">
-                                <h3>Активни потребители</h3>
-                                <p class="stat-value">3</p>
-                            </div>
-                            <div class="stat-card">
-                                <h3>Последна актуализация</h3>
-                                <p class="stat-value">2023-11-15 14:30</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Последни промени</div>
-                        <button class="btn btn-primary">Виж всички</button>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Дата</th>
-                                        <th>Действие</th>
-                                        <th>Потребител</th>
-                                        <th>Детайли</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>2023-11-15 14:25</td>
-                                        <td>Редактиран продукт</td>
-                                        <td>Теодор</td>
-                                        <td>Промяна на цена: 5.99 → 6.50 лв.</td>
-                                    </tr>
-                                    <tr>
-                                        <td>2023-11-15 14:20</td>
-                                        <td>Добавен продукт</td>
-                                        <td>Иван</td>
-                                        <td>Нов продукт: Гайка M6</td>
-                                    </tr>
-                                    <tr>
-                                        <td>2023-11-15 14:15</td>
-                                        <td>Импорт от Excel</td>
-                                        <td>Система</td>
-                                        <td>Актуализирани 12 продукта</td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                    <div class="user-dropdown" id="user-dropdown">
+                        <div class="user-dropdown-item logout" id="logout-btn">
+                            <i class="fas fa-sign-out-alt"></i> Изход
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Products Section -->
-            <div class="section-content" id="products-section" style="display: none;">
+            <div class="section-content" id="products-section">
                 <div class="card">
                     <div class="card-header">
-                        <div class="card-title">Управление на продукти</div>
+                        <div class="card-title"><i class="fas fa-boxes"></i> Управление на продукти</div>
                         <div>
-                            <button class="btn btn-primary" id="add-product-btn"><i class="fas fa-plus"></i> Добави продукт</button>
+                            <button class="btn btn-primary" id="add-product-btn">
+                                <i class="fas fa-plus"></i> Добави продукт
+                            </button>
+                            <button class="btn btn-success" id="export-products-btn">
+                                <i class="fas fa-file-excel"></i> Експорт
+                            </button>
+                            <label class="btn btn-success file-input-label">
+                                <i class="fas fa-file-import"></i> Импорт
+                                <input type="file" id="file-input" accept=".xlsx, .xls">
+                            </label>
                         </div>
                     </div>
                     <div class="card-body">
                         <div class="form-group" style="margin-bottom: 20px;">
-                            <input type="text" class="form-control" id="product-search" placeholder="Търсене по име, код или баркод...">
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="product-search" placeholder="Търсене по име, код или баркод...">
+                                <button class="btn btn-primary" id="scan-barcode-btn">
+                                    <i class="fas fa-barcode"></i> Сканирай
+                                </button>
+                            </div>
                         </div>
                         <div class="table-responsive">
                             <table id="products-table">
@@ -621,146 +806,35 @@
                                         <th>Наличност</th>
                                         <th>Цена (лв.)</th>
                                         <th>Цена (€)</th>
-                                        <th>Баркод</th>
+                                        <th>Баркодове</th>
                                         <th>Действия</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <!-- Sample data -->
-                                    <tr>
-                                        <td>BOLT-M6-20</td>
-                                        <td>Болт M6x20</td>
-                                        <td>54</td>
-                                        <td>0.45</td>
-                                        <td>0.23</td>
-                                        <td>123456789012</td>
-                                        <td>
-                                            <button class="btn btn-primary btn-sm"><i class="fas fa-edit"></i></button>
-                                            <button class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>NUT-M6</td>
-                                        <td>Гайка M6</td>
-                                        <td>128</td>
-                                        <td>0.25</td>
-                                        <td>0.13</td>
-                                        <td>987654321098</td>
-                                        <td>
-                                            <button class="btn btn-primary btn-sm"><i class="fas fa-edit"></i></button>
-                                            <button class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>WASHER-10</td>
-                                        <td>Шайба 10мм</td>
-                                        <td>3</td>
-                                        <td>0.15</td>
-                                        <td>0.08</td>
-                                        <td>456789012345</td>
-                                        <td>
-                                            <button class="btn btn-primary btn-sm"><i class="fas fa-edit"></i></button>
-                                            <button class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></button>
-                                        </td>
-                                    </tr>
+                                    <!-- Продуктите ще се зареждат тук -->
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Scanner Section -->
-            <div class="section-content" id="scanner-section" style="display: none;">
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Баркод скенер</div>
-                    </div>
-                    <div class="card-body">
-                        <div style="display: flex; gap: 20px;">
-                            <div style="flex: 1;">
-                                <div id="scanner-container">
-                                    <video id="scanner-video" style="display: none;"></video>
-                                    <canvas id="scanner-canvas" style="display: none;"></canvas>
-                                    <div id="scanner-overlay">
-                                        <div class="scanner-frame"></div>
-                                    </div>
-                                </div>
-                                <div style="text-align: center; margin-top: 20px;">
-                                    <button id="start-scanner-btn" class="btn btn-primary">
-                                        <i class="fas fa-camera"></i> Стартирай скенер
-                                    </button>
-                                    <button id="stop-scanner-btn" class="btn btn-danger" style="display: none;">
-                                        <i class="fas fa-stop"></i> Спри скенер
-                                    </button>
-                                </div>
-                            </div>
-                            <div style="flex: 1;">
-                                <h3>Или въведи ръчно:</h3>
-                                <div class="form-group">
-                                    <input type="text" class="form-control" id="manual-barcode" placeholder="Въведи баркод">
-                                </div>
-                                <button id="manual-search-btn" class="btn btn-primary">Търси</button>
-                                
-                                <div id="scanner-result" style="margin-top: 30px;">
-                                    <!-- Results will be displayed here -->
-                                </div>
-                            </div>
-                        </div>
+                <!-- Активни потребители -->
+                <div class="active-users">
+                    <h3><i class="fas fa-user-clock"></i> Активни потребители</h3>
+                    <div id="active-users-list">
+                        <!-- Активните потребители ще се показват тук -->
                     </div>
                 </div>
             </div>
 
-            <!-- Import Section -->
-            <div class="section-content" id="import-section" style="display: none;">
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Импорт от Excel</div>
-                    </div>
-                    <div class="card-body">
-                        <div class="alert alert-info">
-                            <i class="fas fa-info-circle"></i> Качете Excel файл с инвентар. Системата автоматично ще разпознае колоните.
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">Избери Excel файл:</label>
-                            <input type="file" class="form-control" id="excel-file" accept=".xlsx, .xls">
-                        </div>
-                        
-                        <div id="excel-preview" style="margin-top: 20px; display: none;">
-                            <h4>Преглед на данните:</h4>
-                            <div class="table-responsive">
-                                <table id="excel-preview-table" class="table">
-                                    <thead>
-                                        <tr>
-                                            <!-- Columns will be added dynamically -->
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- Rows will be added dynamically -->
-                                    </tbody>
-                                </table>
-                            </div>
-                            
-                            <div class="form-group" style="margin-top: 20px;">
-                                <label class="form-label">Колона съдържа:</label>
-                                <div id="column-mapping">
-                                    <!-- Column mapping will be added dynamically -->
-                                </div>
-                            </div>
-                            
-                            <button id="confirm-import-btn" class="btn btn-success">Потвърди импорт</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Users Section -->
+            <!-- Users Section (initially hidden) -->
             <div class="section-content" id="users-section" style="display: none;">
                 <div class="card">
                     <div class="card-header">
-                        <div class="card-title">Управление на потребители</div>
-                        <button class="btn btn-primary" id="add-user-btn"><i class="fas fa-plus"></i> Добави потребител</button>
+                        <div class="card-title"><i class="fas fa-users"></i> Управление на потребители</div>
+                        <button class="btn btn-primary" id="add-user-btn">
+                            <i class="fas fa-plus"></i> Добави потребител
+                        </button>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
@@ -770,41 +844,11 @@
                                         <th>Име</th>
                                         <th>Код за достъп</th>
                                         <th>Роля</th>
-                                        <th>Последна активност</th>
                                         <th>Действия</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr>
-                                        <td>Теодор</td>
-                                        <td>****1234</td>
-                                        <td><span class="badge badge-success">Admin+</span></td>
-                                        <td>2023-11-15 14:30</td>
-                                        <td>
-                                            <button class="btn btn-primary btn-sm"><i class="fas fa-edit"></i></button>
-                                            <button class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>Иван</td>
-                                        <td>****5678</td>
-                                        <td><span class="badge badge-warning">Администратор</span></td>
-                                        <td>2023-11-15 14:25</td>
-                                        <td>
-                                            <button class="btn btn-primary btn-sm"><i class="fas fa-edit"></i></button>
-                                            <button class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>Мария</td>
-                                        <td>****9012</td>
-                                        <td><span class="badge">Продавач</span></td>
-                                        <td>2023-11-15 13:45</td>
-                                        <td>
-                                            <button class="btn btn-primary btn-sm"><i class="fas fa-edit"></i></button>
-                                            <button class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></button>
-                                        </td>
-                                    </tr>
+                                    <!-- Потребителите ще се зареждат тук -->
                                 </tbody>
                             </table>
                         </div>
@@ -812,90 +856,11 @@
                 </div>
             </div>
 
-            <!-- Chat Section -->
-            <div class="section-content" id="chat-section" style="display: none;">
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Чат система</div>
-                        <div>
-                            <span id="online-users-count">3 активни потребителя</span>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div style="display: flex; gap: 20px;">
-                            <div style="flex: 1;">
-                                <div class="chat-container">
-                                    <div class="chat-header">
-                                        <h4>Общ чат</h4>
-                                    </div>
-                                    <div class="chat-messages" id="chat-messages">
-                                        <div class="message received">
-                                            <div class="message-sender">Иван</div>
-                                            <div class="message-text">Здравейте, има ли още болтове M6x20?</div>
-                                            <div class="message-time">14:25</div>
-                                        </div>
-                                        <div class="message sent">
-                                            <div class="message-sender">Вие</div>
-                                            <div class="message-text">Да, имаме още 54 броя.</div>
-                                            <div class="message-time">14:26</div>
-                                        </div>
-                                        <div class="message received">
-                                            <div class="message-sender">Мария</div>
-                                            <div class="message-text">Току-що импортирах новите цени от Excel.</div>
-                                            <div class="message-time">14:30</div>
-                                        </div>
-                                    </div>
-                                    <div class="chat-input">
-                                        <input type="text" id="chat-input" placeholder="Напишете съобщение...">
-                                        <button id="send-message-btn" class="btn btn-primary"><i class="fas fa-paper-plane"></i></button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div style="width: 250px;">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <div class="card-title">Активни потребители</div>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="user-list">
-                                            <div class="user-item" style="display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #eee;">
-                                                <div class="user-avatar" style="width: 30px; height: 30px; font-size: 0.8rem;">Т</div>
-                                                <div style="margin-left: 10px;">
-                                                    <div>Теодор</div>
-                                                    <div style="font-size: 0.8rem; color: var(--success);">онлайн</div>
-                                                </div>
-                                            </div>
-                                            <div class="user-item" style="display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #eee;">
-                                                <div class="user-avatar" style="width: 30px; height: 30px; font-size: 0.8rem; background: #e74c3c;">И</div>
-                                                <div style="margin-left: 10px;">
-                                                    <div>Иван</div>
-                                                    <div style="font-size: 0.8rem; color: var(--success);">онлайн</div>
-                                                </div>
-                                            </div>
-                                            <div class="user-item" style="display: flex; align-items: center; padding: 10px;">
-                                                <div class="user-avatar" style="width: 30px; height: 30px; font-size: 0.8rem; background: #9b59b6;">М</div>
-                                                <div style="margin-left: 10px;">
-                                                    <div>Мария</div>
-                                                    <div style="font-size: 0.8rem; color: var(--success);">онлайн</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- History Section -->
+            <!-- History Section (initially hidden) -->
             <div class="section-content" id="history-section" style="display: none;">
                 <div class="card">
                     <div class="card-header">
-                        <div class="card-title">История на промените</div>
-                        <div>
-                            <button class="btn btn-primary">Филтрирай</button>
-                        </div>
+                        <div class="card-title"><i class="fas fa-history"></i> История на промените</div>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
@@ -905,144 +870,13 @@
                                         <th>Дата</th>
                                         <th>Действие</th>
                                         <th>Потребител</th>
-                                        <th>Обект</th>
-                                        <th>Стара стойност</th>
-                                        <th>Нова стойност</th>
-                                        <th>Действия</th>
+                                        <th>Детайли</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr>
-                                        <td>2023-11-15 14:25</td>
-                                        <td>Редактиране</td>
-                                        <td>Теодор</td>
-                                        <td>Продукт: Болт M6x20</td>
-                                        <td>Цена: 5.99 лв.</td>
-                                        <td>Цена: 6.50 лв.</td>
-                                        <td>
-                                            <button class="btn btn-primary btn-sm">Възстанови</button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>2023-11-15 14:20</td>
-                                        <td>Добавяне</td>
-                                        <td>Иван</td>
-                                        <td>Продукт: Гайка M6</td>
-                                        <td>-</td>
-                                        <td>Цена: 0.25 лв.</td>
-                                        <td>
-                                            <button class="btn btn-primary btn-sm">Възстанови</button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>2023-11-15 14:15</td>
-                                        <td>Импорт</td>
-                                        <td>Система</td>
-                                        <td>12 продукта</td>
-                                        <td>-</td>
-                                        <td>Актуализирани</td>
-                                        <td>
-                                            <button class="btn btn-primary btn-sm">Възстанови</button>
-                                        </td>
-                                    </tr>
+                                    <!-- Историята ще се зарежда тук -->
                                 </tbody>
                             </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Settings Section -->
-            <div class="section-content" id="settings-section" style="display: none;">
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Настройки</div>
-                    </div>
-                    <div class="card-body">
-                        <div class="tabs">
-                            <div class="tab active" data-tab="general">Общи</div>
-                            <div class="tab" data-tab="permissions">Права</div>
-                            <div class="tab" data-tab="backup">Резервни копия</div>
-                        </div>
-                        
-                        <div id="general-tab" class="tab-content">
-                            <div class="form-group">
-                                <label class="form-label">Име на системата:</label>
-                                <input type="text" class="form-control" value="IMPAС LiveStock">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Валутен курс (BGN към EUR):</label>
-                                <input type="number" class="form-control" step="0.00001" value="1.95583">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Праг за изчерпване:</label>
-                                <input type="number" class="form-control" value="5">
-                                <small>Бройки под тази стойност ще се маркират в червено</small>
-                            </div>
-                            <button class="btn btn-success">Запази настройки</button>
-                        </div>
-                        
-                        <div id="permissions-tab" class="tab-content" style="display: none;">
-                            <h4>Управление на права</h4>
-                            <div class="table-responsive">
-                                <table class="table">
-                                    <thead>
-                                        <tr>
-                                            <th>Роля</th>
-                                            <th>Преглед на продукти</th>
-                                            <th>Редактиране на продукти</th>
-                                            <th>Управление на потребители</th>
-                                            <th>Импорт от Excel</th>
-                                            <th>Достъп до чат</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>Admin+</td>
-                                            <td><input type="checkbox" checked disabled></td>
-                                            <td><input type="checkbox" checked disabled></td>
-                                            <td><input type="checkbox" checked disabled></td>
-                                            <td><input type="checkbox" checked disabled></td>
-                                            <td><input type="checkbox" checked disabled></td>
-                                        </tr>
-                                        <tr>
-                                            <td>Администратор</td>
-                                            <td><input type="checkbox" checked></td>
-                                            <td><input type="checkbox" checked></td>
-                                            <td><input type="checkbox"></td>
-                                            <td><input type="checkbox" checked></td>
-                                            <td><input type="checkbox" checked></td>
-                                        </tr>
-                                        <tr>
-                                            <td>Продавач</td>
-                                            <td><input type="checkbox" checked></td>
-                                            <td><input type="checkbox"></td>
-                                            <td><input type="checkbox"></td>
-                                            <td><input type="checkbox"></td>
-                                            <td><input type="checkbox" checked></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <button class="btn btn-success">Запази права</button>
-                        </div>
-                        
-                        <div id="backup-tab" class="tab-content" style="display: none;">
-                            <h4>Резервни копия</h4>
-                            <div class="alert alert-info">
-                                <i class="fas fa-info-circle"></i> Последно резервно копие: 2023-11-15 00:00
-                            </div>
-                            <div style="display: flex; gap: 10px;">
-                                <button class="btn btn-primary">
-                                    <i class="fas fa-download"></i> Създай резервно копие
-                                </button>
-                                <button class="btn btn-success">
-                                    <i class="fas fa-upload"></i> Възстанови от копие
-                                </button>
-                                <button class="btn btn-danger">
-                                    <i class="fas fa-file-export"></i> Експорт в Excel
-                                </button>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -1060,27 +894,32 @@
             <div class="modal-body">
                 <div class="form-group">
                     <label class="form-label">Код на продукта:</label>
-                    <input type="text" class="form-control" id="product-code">
+                    <input type="text" class="form-control" id="product-code" required>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Име на продукта:</label>
-                    <input type="text" class="form-control" id="product-name">
+                    <input type="text" class="form-control" id="product-name" required>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Наличност:</label>
-                    <input type="number" class="form-control" id="product-stock">
+                    <input type="number" class="form-control" id="product-stock" required>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Цена (лв.):</label>
-                    <input type="number" step="0.01" class="form-control" id="product-price">
+                    <input type="number" step="0.01" class="form-control" id="product-price" required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Баркод:</label>
-                    <input type="text" class="form-control" id="product-barcode">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Снимка:</label>
-                    <input type="file" class="form-control" id="product-image">
+                    <label class="form-label">Допълнителни баркодове:</label>
+                    <div id="barcode-list"></div>
+                    <div class="input-group" style="margin-top: 10px;">
+                        <input type="text" class="form-control" id="new-barcode" placeholder="Въведете баркод">
+                        <button class="btn btn-primary" id="add-barcode-btn">
+                            <i class="fas fa-plus"></i> Добави
+                        </button>
+                        <button class="btn btn-warning" id="scan-barcode-modal-btn">
+                            <i class="fas fa-barcode"></i> Сканирай
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -1100,34 +939,110 @@
             <div class="modal-body">
                 <div class="form-group">
                     <label class="form-label">Име:</label>
-                    <input type="text" class="form-control" id="user-name">
+                    <input type="text" class="form-control" id="user-fullname" required>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Код за достъп:</label>
-                    <input type="text" class="form-control" id="user-access-code">
+                    <input type="text" class="form-control" id="user-access-code" required>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Роля:</label>
-                    <select class="form-control" id="user-role">
-                        <option value="admin-plus">Admin+</option>
+                    <select class="form-control" id="user-role-select" required>
                         <option value="admin">Администратор</option>
-                        <option value="seller">Продавач</option>
+                        <option value="user">Потребител</option>
                     </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Права:</label>
-                    <div>
-                        <label><input type="checkbox" checked> Преглед на продукти</label><br>
-                        <label><input type="checkbox" checked> Редактиране на продукти</label><br>
-                        <label><input type="checkbox"> Управление на потребители</label><br>
-                        <label><input type="checkbox"> Импорт от Excel</label><br>
-                        <label><input type="checkbox" checked> Достъп до чат</label>
-                    </div>
                 </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-danger close-btn">Отказ</button>
                 <button class="btn btn-success" id="save-user-btn">Запази</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Product Modal -->
+    <div class="modal" id="edit-product-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Редактирай продукт</div>
+                <button class="close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-product-id">
+                <div class="form-group">
+                    <label class="form-label">Код на продукта:</label>
+                    <input type="text" class="form-control" id="edit-product-code" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Име на продукта:</label>
+                    <input type="text" class="form-control" id="edit-product-name" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Наличност:</label>
+                    <input type="number" class="form-control" id="edit-product-stock" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Цена (лв.):</label>
+                    <input type="number" step="0.01" class="form-control" id="edit-product-price" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Допълнителни баркодове:</label>
+                    <div id="edit-barcode-list"></div>
+                    <div class="input-group" style="margin-top: 10px;">
+                        <input type="text" class="form-control" id="edit-new-barcode" placeholder="Въведете баркод">
+                        <button class="btn btn-primary" id="edit-add-barcode-btn">
+                            <i class="fas fa-plus"></i> Добави
+                        </button>
+                        <button class="btn btn-warning" id="edit-scan-barcode-btn">
+                            <i class="fas fa-barcode"></i> Сканирай
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-danger close-btn">Отказ</button>
+                <button class="btn btn-success" id="update-product-btn">Запази промени</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Barcode Scanner Modal -->
+    <div class="modal" id="scanner-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Сканиране на баркод</div>
+                <button class="close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="scanner-container">
+                    <div id="scanner-overlay">Инициализиране на сканера...</div>
+                    <div id="scanner"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Сканиран баркод:</label>
+                    <input type="text" class="form-control" id="scanned-barcode" readonly>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-danger" id="cancel-scan-btn">Отказ</button>
+                <button class="btn btn-success" id="use-barcode-btn">Използвай баркод</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div class="modal confirmation-modal" id="confirmation-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Потвърждение</div>
+                <button class="close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="confirmation-message" id="confirmation-message">Сигурни ли сте, че искате да излезете от профила си?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-danger" id="confirm-cancel-btn">Отказ</button>
+                <button class="btn btn-success" id="confirm-action-btn">Да, сигурен съм</button>
             </div>
         </div>
     </div>
@@ -1139,346 +1054,942 @@
     </div>
 
     <script>
-        // Simulated database
-        const simulatedDB = {
-            products: [
-                { code: 'BOLT-M6-20', name: 'Болт M6x20', stock: 54, priceBgn: 0.45, priceEur: 0.23, barcode: '123456789012' },
-                { code: 'NUT-M6', name: 'Гайка M6', stock: 128, priceBgn: 0.25, priceEur: 0.13, barcode: '987654321098' },
-                { code: 'WASHER-10', name: 'Шайба 10мм', stock: 3, priceBgn: 0.15, priceEur: 0.08, barcode: '456789012345' }
-            ],
-            users: [
-                { name: 'Теодор', accessCode: '1234', role: 'Admin+' },
-                { name: 'Иван', accessCode: '5678', role: 'Администратор' },
-                { name: 'Мария', accessCode: '9012', role: 'Продавач' }
-            ],
-            history: [
-                { date: '2023-11-15 14:25', action: 'Редактиране', user: 'Теодор', details: 'Промяна на цена: 5.99 → 6.50 лв.' },
-                { date: '2023-11-15 14:20', action: 'Добавяне', user: 'Иван', details: 'Нов продукт: Гайка M6' },
-                { date: '2023-11-15 14:15', action: 'Импорт', user: 'Система', details: 'Актуализирани 12 продукта' }
-            ]
+        // Firebase конфигурация
+        const firebaseConfig = {
+            apiKey: "AIzaSyAVfkYbYcknvbnE8FfWFChH66o_mpcmEug",
+            authDomain: "impas-livestock.firebaseapp.com",
+            databaseURL: "https://impas-livestock.firebaseio.com",
+            projectId: "impas-livestock",
+            storageBucket: "impas-livestock.appspot.com",
+            messagingSenderId: "392993978176",
+            appId: "1:392993978176:web:c5e77b25b616af6adfeca5",
+            measurementId: "G-03S1W3D4CH"
         };
 
-        // DOM Elements
-        const menuItems = document.querySelectorAll('.menu-item');
-        const sectionContents = document.querySelectorAll('.section-content');
-        const sectionTitle = document.getElementById('section-title');
-        const addProductBtn = document.getElementById('add-product-btn');
-        const addProductModal = document.getElementById('add-product-modal');
-        const addUserBtn = document.getElementById('add-user-btn');
-        const addUserModal = document.getElementById('add-user-modal');
-        const closeButtons = document.querySelectorAll('.close, .close-btn');
-        const notification = document.getElementById('notification');
-        const startScannerBtn = document.getElementById('start-scanner-btn');
-        const stopScannerBtn = document.getElementById('stop-scanner-btn');
-        const manualBarcodeInput = document.getElementById('manual-barcode');
-        const manualSearchBtn = document.getElementById('manual-search-btn');
-        const scannerResult = document.getElementById('scanner-result');
-        const videoElement = document.getElementById('scanner-video');
-        const canvasElement = document.getElementById('scanner-canvas');
-        const excelFileInput = document.getElementById('excel-file');
-        const excelPreview = document.getElementById('excel-preview');
-        const tabs = document.querySelectorAll('.tab');
-        const tabContents = document.querySelectorAll('.tab-content');
-        const chatInput = document.getElementById('chat-input');
-        const sendMessageBtn = document.getElementById('send-message-btn');
-        const chatMessages = document.getElementById('chat-messages');
+        // Инициализиране на Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
 
-        // Navigation
-        menuItems.forEach(item => {
-            item.addEventListener('click', () => {
-                const section = item.getAttribute('data-section');
-                
-                // Update active menu item
-                menuItems.forEach(i => i.classList.remove('active'));
-                item.classList.add('active');
-                
-                // Show corresponding section
-                sectionContents.forEach(content => content.style.display = 'none');
-                document.getElementById(`${section}-section`).style.display = 'block';
-                
-                // Update title
-                sectionTitle.textContent = item.textContent.trim();
-                
-                // Special cases
-                if (section === 'scanner') {
-                    // Initialize scanner when section is opened
-                    initScanner();
-                } else if (section === 'chat') {
-                    // Scroll chat to bottom
-                    scrollChatToBottom();
-                }
-            });
-        });
-
-        // Modals
-        addProductBtn.addEventListener('click', () => {
-            addProductModal.style.display = 'flex';
-        });
-
-        addUserBtn.addEventListener('click', () => {
-            addUserModal.style.display = 'flex';
-        });
-
-        closeButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.modal').forEach(modal => {
-                    modal.style.display = 'none';
-                });
-            });
-        });
-
-        // Close modal when clicking outside
-        window.addEventListener('click', (e) => {
-            if (e.target.classList.contains('modal')) {
-                e.target.style.display = 'none';
-            }
-        });
-
-        // Save product
-        document.getElementById('save-product-btn').addEventListener('click', () => {
-            // In a real app, you would save to database here
-            showNotification('Продуктът е добавен успешно!');
-            addProductModal.style.display = 'none';
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM елементи
+            const loginScreen = document.getElementById('login-screen');
+            const appContainer = document.getElementById('app-container');
+            const loginBtn = document.getElementById('login-btn');
+            const accessCodeInput = document.getElementById('access-code');
+            const logoutBtn = document.getElementById('logout-btn');
+            const sidebar = document.getElementById('sidebar');
+            const menuToggle = document.getElementById('menu-toggle');
+            const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+            const menuItems = document.querySelectorAll('.menu-item');
+            const sectionContents = document.querySelectorAll('.section-content');
+            const addProductBtn = document.getElementById('add-product-btn');
+            const saveProductBtn = document.getElementById('save-product-btn');
+            const exportProductsBtn = document.getElementById('export-products-btn');
+            const fileInput = document.getElementById('file-input');
+            const addUserBtn = document.getElementById('add-user-btn');
+            const saveUserBtn = document.getElementById('save-user-btn');
+            const productsTable = document.getElementById('products-table').getElementsByTagName('tbody')[0];
+            const usersTable = document.getElementById('users-table').getElementsByTagName('tbody')[0];
+            const historyTable = document.getElementById('history-table').getElementsByTagName('tbody')[0];
+            const productSearch = document.getElementById('product-search');
+            const activeUsersList = document.getElementById('active-users-list');
+            const userAvatar = document.getElementById('user-avatar');
+            const userDropdown = document.getElementById('user-dropdown');
+            const scanBarcodeBtn = document.getElementById('scan-barcode-btn');
+            const scannerModal = document.getElementById('scanner-modal');
+            const scannedBarcodeInput = document.getElementById('scanned-barcode');
+            const useBarcodeBtn = document.getElementById('use-barcode-btn');
+            const cancelScanBtn = document.getElementById('cancel-scan-btn');
+            const confirmationModal = document.getElementById('confirmation-modal');
+            const confirmActionBtn = document.getElementById('confirm-action-btn');
+            const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
             
-            // Reset form
-            document.querySelectorAll('#add-product-modal input').forEach(input => {
-                input.value = '';
-            });
-        });
-
-        // Save user
-        document.getElementById('save-user-btn').addEventListener('click', () => {
-            showNotification('Потребителят е добавен успешно!');
-            addUserModal.style.display = 'none';
+            // Баркод променливи
+            let currentBarcodes = [];
+            let editBarcodes = [];
+            let scannerActive = false;
+            let currentScannerTarget = null;
             
-            // Reset form
-            document.querySelectorAll('#add-user-modal input').forEach(input => {
-                input.value = '';
-            });
-        });
-
-        // Notification
-        function showNotification(message) {
-            const notificationMessage = document.getElementById('notification-message');
-            notificationMessage.textContent = message;
-            notification.classList.add('show');
+            // Текущ потребител и активни потребители
+            let currentUser = null;
+            let activeUsers = {};
             
-            setTimeout(() => {
-                notification.classList.remove('show');
-            }, 3000);
-        }
-
-        // Scanner functionality
-        function initScanner() {
-            // This is a simulation - in a real app you would use a barcode scanning library
-            startScannerBtn.addEventListener('click', () => {
-                startScannerBtn.style.display = 'none';
-                stopScannerBtn.style.display = 'inline-block';
-                videoElement.style.display = 'block';
-                
-                // Simulate camera access
-                setTimeout(() => {
-                    showNotification('Скенерът е активиран. Насочете камерата към баркод.');
-                }, 500);
-                
-                // Simulate barcode detection after 3 seconds
-                setTimeout(() => {
-                    simulateBarcodeDetection('123456789012');
-                }, 3000);
-            });
-            
-            stopScannerBtn.addEventListener('click', () => {
-                stopScannerBtn.style.display = 'none';
-                startScannerBtn.style.display = 'inline-block';
-                videoElement.style.display = 'none';
-                showNotification('Скенерът е спрян.');
-            });
-            
-            manualSearchBtn.addEventListener('click', () => {
-                const barcode = manualBarcodeInput.value.trim();
-                if (barcode) {
-                    simulateBarcodeDetection(barcode);
+            // Проверка за мобилно устройство
+            function checkMobile() {
+                if (window.innerWidth <= 992) {
+                    sidebar.classList.remove('open');
+                    mobileMenuToggle.style.display = 'inline-flex';
                 } else {
-                    showNotification('Моля, въведете баркод!');
+                    sidebar.classList.add('open');
+                    mobileMenuToggle.style.display = 'none';
                 }
-            });
-            
-            // Allow Enter key in manual barcode input
-            manualBarcodeInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    manualSearchBtn.click();
-                }
-            });
-        }
-
-        function simulateBarcodeDetection(barcode) {
-            // Find product in simulated database
-            const product = simulatedDB.products.find(p => p.barcode === barcode);
-            
-            if (product) {
-                scannerResult.innerHTML = `
-                    <div class="card" style="animation: fadeIn 0.3s;">
-                        <div class="card-header">
-                            <div class="card-title">Намерен продукт</div>
-                        </div>
-                        <div class="card-body" style="display: flex; align-items: center;">
-                            <div style="width: 100px; height: 100px; background: #eee; display: flex; align-items: center; justify-content: center; margin-right: 20px;">
-                                <i class="fas fa-box-open" style="font-size: 2rem; color: #777;"></i>
-                            </div>
-                            <div>
-                                <h3>${product.name}</h3>
-                                <p><strong>Код:</strong> ${product.code}</p>
-                                <p><strong>Наличност:</strong> ${product.stock} бр.</p>
-                                <p><strong>Цена:</strong> ${product.priceBgn} лв. (${product.priceEur} €)</p>
-                                <p><strong>Баркод:</strong> ${product.barcode}</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            } else {
-                scannerResult.innerHTML = `
-                    <div class="alert alert-danger">
-                        <i class="fas fa-exclamation-triangle"></i> Продукт с баркод ${barcode} не е намерен!
-                    </div>
-                `;
             }
             
-            manualBarcodeInput.value = '';
-        }
-
-        // Excel import simulation
-        excelFileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                // In a real app, you would parse the Excel file here
-                // For simulation, we'll just show some sample data
-                
-                excelPreview.style.display = 'block';
-                const previewTable = document.querySelector('#excel-preview-table');
-                
-                // Sample headers and data
-                const sampleHeaders = ['Код', 'Име', 'Наличност', 'Цена (лв.)', 'Баркод'];
-                const sampleData = [
-                    ['SCREW-30', 'Винт 30мм', '45', '0.35', '112233445566'],
-                    ['HAMMER', 'Чук', '12', '15.99', '778899001122'],
-                    ['PLIERS', 'Клещи', '8', '8.50', '334455667788']
-                ];
-                
-                // Create headers
-                let headersHtml = '<tr>';
-                sampleHeaders.forEach(header => {
-                    headersHtml += `<th>${header}</th>`;
-                });
-                headersHtml += '</tr>';
-                previewTable.querySelector('thead').innerHTML = headersHtml;
-                
-                // Create rows
-                let rowsHtml = '';
-                sampleData.forEach(row => {
-                    rowsHtml += '<tr>';
-                    row.forEach(cell => {
-                        rowsHtml += `<td>${cell}</td>`;
+            // Инициализация
+            checkMobile();
+            window.addEventListener('resize', checkMobile);
+            
+            // Бутон за мобилно меню
+            menuToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('open');
+            });
+            
+            mobileMenuToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('open');
+            });
+            
+            // Показване/скриване на потребителското меню
+            userAvatar.addEventListener('click', function(e) {
+                e.stopPropagation();
+                userDropdown.classList.toggle('show');
+            });
+            
+            document.addEventListener('click', function() {
+                userDropdown.classList.remove('show');
+            });
+            
+            // Навигация между секции
+            menuItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    // Премахване активен клас от всички елементи
+                    menuItems.forEach(i => i.classList.remove('active'));
+                    // Добавяне активен клас към текущия елемент
+                    this.classList.add('active');
+                    
+                    // Скриване на всички секции
+                    sectionContents.forEach(section => {
+                        section.style.display = 'none';
                     });
-                    rowsHtml += '</tr>';
+                    
+                    // Показване на избраната секция
+                    const sectionId = this.getAttribute('data-section') + '-section';
+                    document.getElementById(sectionId).style.display = 'block';
+                    document.getElementById('section-title').textContent = this.textContent.trim();
+                    
+                    // Затваряне на менюто на мобилни устройства
+                    if (window.innerWidth <= 992) {
+                        sidebar.classList.remove('open');
+                    }
                 });
-                previewTable.querySelector('tbody').innerHTML = rowsHtml;
+            });
+            
+            // Функция за вход с код
+            loginBtn.addEventListener('click', function() {
+                const accessCode = accessCodeInput.value.trim();
                 
-                // Create column mapping options
-                const columnMapping = document.getElementById('column-mapping');
-                columnMapping.innerHTML = '';
-                
-                sampleHeaders.forEach((header, index) => {
-                    const div = document.createElement('div');
-                    div.className = 'form-group';
-                    div.innerHTML = `
-                        <label class="form-label">${header}:</label>
-                        <select class="form-control">
-                            <option value="">-- Не използвай --</option>
-                            <option value="code">Код на продукта</option>
-                            <option value="name">Име на продукта</option>
-                            <option value="stock">Наличност</option>
-                            <option value="price">Цена (лв.)</option>
-                            <option value="barcode">Баркод</option>
-                        </select>
-                    `;
-                    columnMapping.appendChild(div);
-                });
-                
-                showNotification('Excel файлът е зареден успешно!');
-            }
-        });
+                if (!accessCode) {
+                    showNotification('Моля, въведете код за достъп!', 'error');
+                    return;
+                }
 
-        // Tabs
-        tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                const tabId = tab.getAttribute('data-tab');
+                // Специален администраторски код (105124)
+                if (accessCode === "105124") {
+                    handleSuccessfulLogin({
+                        id: "admin-super",
+                        name: "Главен Администратор",
+                        role: "admin",
+                        accessCode: "105124"
+                    });
+                    return;
+                }
+
+                // Нормален вход за други потребители
+                database.ref('users').orderByChild('accessCode').equalTo(accessCode).once('value')
+                    .then(snapshot => {
+                        const users = snapshot.val();
+                        
+                        if (users) {
+                            const userId = Object.keys(users)[0];
+                            handleSuccessfulLogin({
+                                id: userId,
+                                ...users[userId]
+                            });
+                        } else {
+                            showNotification('Невалиден код за достъп!', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        showNotification('Грешка при вход: ' + error.message, 'error');
+                    });
+            });
+            
+            function handleSuccessfulLogin(userData) {
+                currentUser = {
+                    ...userData,
+                    lastActive: new Date().toISOString()
+                };
                 
-                // Update active tab
-                tabs.forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
+                // Записване на активен потребител
+                database.ref('activeUsers/' + currentUser.id).set({
+                    name: currentUser.name,
+                    role: currentUser.role,
+                    lastActive: currentUser.lastActive
+                });
                 
-                // Show corresponding content
-                tabContents.forEach(content => content.style.display = 'none');
-                document.getElementById(`${tabId}-tab`).style.display = 'block';
+                // Показване на приложението
+                loginScreen.style.display = 'none';
+                appContainer.style.display = 'flex';
+                
+                // Задаване на потребителска информация
+                document.getElementById('user-name').textContent = currentUser.name;
+                document.getElementById('user-role').textContent = currentUser.role === 'admin' ? 'Admin' : 'User';
+                document.getElementById('user-avatar').textContent = currentUser.name.charAt(0);
+                
+                // Зареждане на данните
+                loadProducts();
+                loadUsers();
+                loadHistory();
+                loadActiveUsers();
+                
+                showNotification('Успешен вход!');
+            }
+            
+            // Функция за изход с потвърждение
+            logoutBtn.addEventListener('click', function() {
+                showConfirmation(
+                    `Сигурни ли сте, че искате да излезете от профила си (${currentUser.name})?`,
+                    function() {
+                        if (currentUser && currentUser.id) {
+                            database.ref('activeUsers/' + currentUser.id).remove();
+                        }
+                        currentUser = null;
+                        appContainer.style.display = 'none';
+                        loginScreen.style.display = 'flex';
+                        accessCodeInput.value = '';
+                        showNotification('Успешно излязохте от системата!');
+                    }
+                );
+            });
+            
+            // Функция за показване на диалог за потвърждение
+            function showConfirmation(message, callback) {
+                document.getElementById('confirmation-message').textContent = message;
+                confirmationModal.style.display = 'flex';
+                
+                // Премахване на стари event listeners
+                const newConfirmBtn = confirmActionBtn.cloneNode(true);
+                confirmActionBtn.parentNode.replaceChild(newConfirmBtn, confirmActionBtn);
+                
+                const newCancelBtn = confirmCancelBtn.cloneNode(true);
+                confirmCancelBtn.parentNode.replaceChild(newCancelBtn, confirmCancelBtn);
+                
+                // Добавяне на нови event listeners
+                newConfirmBtn.addEventListener('click', function() {
+                    confirmationModal.style.display = 'none';
+                    if (callback) callback();
+                });
+                
+                newCancelBtn.addEventListener('click', function() {
+                    confirmationModal.style.display = 'none';
+                });
+            }
+            
+            // Зареждане на продукти
+            function loadProducts() {
+                database.ref('products').once('value')
+                    .then(snapshot => {
+                        productsTable.innerHTML = '';
+                        const products = snapshot.val() || {};
+                        
+                        Object.keys(products).forEach(key => {
+                            const product = products[key];
+                            const row = productsTable.insertRow();
+                            
+                            // Форматиране на баркодовете за показване
+                            let barcodesDisplay = product.code;
+                            if (product.barcodes && Object.keys(product.barcodes).length > 0) {
+                                barcodesDisplay += ', ' + Object.keys(product.barcodes).join(', ');
+                            }
+                            
+                            row.innerHTML = `
+                                <td>${product.code}</td>
+                                <td>${product.name}</td>
+                                <td>${product.stock}</td>
+                                <td>${product.price.toFixed(2)}</td>
+                                <td>${(product.price / 1.95583).toFixed(2)}</td>
+                                <td>${barcodesDisplay}</td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm edit-product" data-id="${key}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-danger btn-sm delete-product" data-id="${key}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            `;
+                        });
+                        
+                        // Добавяне на event listeners за бутоните
+                        addProductButtonsListeners();
+                    })
+                    .catch(error => {
+                        showNotification('Грешка при зареждане на продукти: ' + error.message, 'error');
+                    });
+            }
+            
+            // Управление на баркодове
+            function renderBarcodeList(barcodes, containerId) {
+                const container = document.getElementById(containerId);
+                container.innerHTML = '';
+                
+                Object.keys(barcodes).forEach(barcode => {
+                    const barcodeItem = document.createElement('div');
+                    barcodeItem.className = 'barcode-item';
+                    barcodeItem.innerHTML = `
+                        <input type="text" class="barcode-value" value="${barcode}" readonly>
+                        <div class="barcode-actions">
+                            <button class="btn btn-danger btn-sm remove-barcode" data-barcode="${barcode}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                    container.appendChild(barcodeItem);
+                });
+                
+                // Добавяне на event listeners за бутоните за премахване
+                document.querySelectorAll(`#${containerId} .remove-barcode`).forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const barcode = this.getAttribute('data-barcode');
+                        if (containerId === 'barcode-list') {
+                            delete currentBarcodes[barcode];
+                            renderBarcodeList(currentBarcodes, 'barcode-list');
+                        } else {
+                            delete editBarcodes[barcode];
+                            renderBarcodeList(editBarcodes, 'edit-barcode-list');
+                        }
+                    });
+                });
+            }
+            
+            function addProductButtonsListeners() {
+                // Добавяне на продукт
+                addProductBtn.addEventListener('click', function() {
+                    currentBarcodes = {};
+                    document.getElementById('barcode-list').innerHTML = '';
+                    document.getElementById('add-product-modal').style.display = 'flex';
+                });
+                
+                // Добавяне на баркод
+                document.getElementById('add-barcode-btn').addEventListener('click', function() {
+                    const newBarcode = document.getElementById('new-barcode').value.trim();
+                    if (newBarcode) {
+                        currentBarcodes[newBarcode] = true;
+                        renderBarcodeList(currentBarcodes, 'barcode-list');
+                        document.getElementById('new-barcode').value = '';
+                    } else {
+                        showNotification('Моля, въведете баркод!', 'error');
+                    }
+                });
+                
+                // Сканиране на баркод (модал)
+                document.getElementById('scan-barcode-modal-btn').addEventListener('click', function() {
+                    currentScannerTarget = 'add';
+                    initScanner();
+                });
+                
+                // Запазване на продукт
+                saveProductBtn.addEventListener('click', function() {
+                    const code = document.getElementById('product-code').value.trim();
+                    const name = document.getElementById('product-name').value.trim();
+                    const stock = parseInt(document.getElementById('product-stock').value);
+                    const price = parseFloat(document.getElementById('product-price').value);
+                    
+                    if (code && name && !isNaN(stock) && !isNaN(price)) {
+                        const product = {
+                            code: code,
+                            name: name,
+                            stock: stock,
+                            price: price,
+                            barcodes: currentBarcodes,
+                            createdAt: new Date().toISOString(),
+                            createdBy: currentUser.id
+                        };
+                        
+                        database.ref('products').push(product)
+                            .then(() => {
+                                // Добавяне в историята
+                                const historyEntry = {
+                                    action: 'Добавяне на продукт',
+                                    details: `Добавен продукт: ${name} (${code}) с ${Object.keys(currentBarcodes).length} баркода`,
+                                    user: currentUser.id,
+                                    userName: currentUser.name,
+                                    timestamp: new Date().toISOString()
+                                };
+                                database.ref('history').push(historyEntry);
+                                
+                                showNotification('Продуктът е добавен успешно!');
+                                document.getElementById('add-product-modal').style.display = 'none';
+                                
+                                // Reset форма
+                                document.getElementById('product-code').value = '';
+                                document.getElementById('product-name').value = '';
+                                document.getElementById('product-stock').value = '';
+                                document.getElementById('product-price').value = '';
+                                document.getElementById('new-barcode').value = '';
+                                currentBarcodes = {};
+                                document.getElementById('barcode-list').innerHTML = '';
+                                
+                                // Презареждане на продуктите
+                                loadProducts();
+                            })
+                            .catch(error => {
+                                showNotification('Грешка при запис: ' + error.message, 'error');
+                            });
+                    } else {
+                        showNotification('Моля, попълнете всички полета правилно!', 'error');
+                    }
+                });
+                
+                // Редактиране на продукт
+                document.querySelectorAll('.edit-product').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const productId = this.getAttribute('data-id');
+                        database.ref('products/' + productId).once('value')
+                            .then(snapshot => {
+                                const product = snapshot.val();
+                                editBarcodes = product.barcodes || {};
+                                
+                                document.getElementById('edit-product-id').value = productId;
+                                document.getElementById('edit-product-code').value = product.code;
+                                document.getElementById('edit-product-name').value = product.name;
+                                document.getElementById('edit-product-stock').value = product.stock;
+                                document.getElementById('edit-product-price').value = product.price;
+                                
+                                renderBarcodeList(editBarcodes, 'edit-barcode-list');
+                                document.getElementById('edit-product-modal').style.display = 'flex';
+                            })
+                            .catch(error => {
+                                showNotification('Грешка при зареждане на продукт: ' + error.message, 'error');
+                            });
+                    });
+                });
+                
+                // Добавяне на баркод при редактиране
+                document.getElementById('edit-add-barcode-btn').addEventListener('click', function() {
+                    const newBarcode = document.getElementById('edit-new-barcode').value.trim();
+                    if (newBarcode) {
+                        editBarcodes[newBarcode] = true;
+                        renderBarcodeList(editBarcodes, 'edit-barcode-list');
+                        document.getElementById('edit-new-barcode').value = '';
+                    } else {
+                        showNotification('Моля, въведете баркод!', 'error');
+                    }
+                });
+                
+                // Сканиране на баркод при редактиране
+                document.getElementById('edit-scan-barcode-btn').addEventListener('click', function() {
+                    currentScannerTarget = 'edit';
+                    initScanner();
+                });
+                
+                // Запазване на промени в продукт
+                document.getElementById('update-product-btn').addEventListener('click', function() {
+                    const productId = document.getElementById('edit-product-id').value;
+                    const code = document.getElementById('edit-product-code').value.trim();
+                    const name = document.getElementById('edit-product-name').value.trim();
+                    const stock = parseInt(document.getElementById('edit-product-stock').value);
+                    const price = parseFloat(document.getElementById('edit-product-price').value);
+                    
+                    if (productId && code && name && !isNaN(stock) && !isNaN(price)) {
+                        const updates = {
+                            code: code,
+                            name: name,
+                            stock: stock,
+                            price: price,
+                            barcodes: editBarcodes,
+                            updatedAt: new Date().toISOString(),
+                            updatedBy: currentUser.id
+                        };
+                        
+                        database.ref('products/' + productId).update(updates)
+                            .then(() => {
+                                // Добавяне в историята
+                                const historyEntry = {
+                                    action: 'Редактиране на продукт',
+                                    details: `Променен продукт: ${name} (${code}) с ${Object.keys(editBarcodes).length} баркода`,
+                                    user: currentUser.id,
+                                    userName: currentUser.name,
+                                    timestamp: new Date().toISOString()
+                                };
+                                database.ref('history').push(historyEntry);
+                                
+                                showNotification('Продуктът е обновен успешно!');
+                                document.getElementById('edit-product-modal').style.display = 'none';
+                                loadProducts();
+                            })
+                            .catch(error => {
+                                showNotification('Грешка при обновяване: ' + error.message, 'error');
+                            });
+                    } else {
+                        showNotification('Моля, попълнете всички полета правилно!', 'error');
+                    }
+                });
+                
+                // Изтриване на продукт
+                document.querySelectorAll('.delete-product').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const productId = this.getAttribute('data-id');
+                        showConfirmation('Сигурни ли сте, че искате да изтриете този продукт?', function() {
+                            database.ref('products/' + productId).once('value')
+                                .then(snapshot => {
+                                    const product = snapshot.val();
+                                    
+                                    return database.ref('products/' + productId).remove()
+                                        .then(() => {
+                                            // Добавяне в историята
+                                            const historyEntry = {
+                                                action: 'Изтриване на продукт',
+                                                details: `Изтрит продукт: ${product.name} (${product.code})`,
+                                                user: currentUser.id,
+                                                userName: currentUser.name,
+                                                timestamp: new Date().toISOString()
+                                            };
+                                            return database.ref('history').push(historyEntry);
+                                        });
+                                })
+                                .then(() => {
+                                    showNotification('Продуктът е изтрит успешно!');
+                                    loadProducts();
+                                })
+                                .catch(error => {
+                                    showNotification('Грешка при изтриване: ' + error.message, 'error');
+                                });
+                        });
+                    });
+                });
+            }
+            
+            // Инициализация на баркод скенер
+            function initScanner() {
+                scannerModal.style.display = 'flex';
+                document.getElementById('scanner-overlay').style.display = 'flex';
+                scannedBarcodeInput.value = '';
+                
+                Quagga.init({
+                    inputStream: {
+                        name: "Live",
+                        type: "LiveStream",
+                        target: document.querySelector('#scanner'),
+                        constraints: {
+                            width: 480,
+                            height: 320,
+                            facingMode: "environment"
+                        },
+                    },
+                    decoder: {
+                        readers: ["ean_reader", "ean_8_reader", "code_128_reader", "code_39_reader", "code_39_vin_reader", "codabar_reader", "upc_reader", "upc_e_reader"]
+                    },
+                }, function(err) {
+                    if (err) {
+                        console.error(err);
+                        document.getElementById('scanner-overlay').textContent = 'Грешка при инициализиране на скенера';
+                        return;
+                    }
+                    document.getElementById('scanner-overlay').style.display = 'none';
+                    Quagga.start();
+                    scannerActive = true;
+                });
+                
+                Quagga.onDetected(function(result) {
+                    if (result && result.codeResult && result.codeResult.code) {
+                        const code = result.codeResult.code;
+                        scannedBarcodeInput.value = code;
+                        stopScanner();
+                    }
+                });
+            }
+            
+            function stopScanner() {
+                if (scannerActive) {
+                    Quagga.stop();
+                    scannerActive = false;
+                }
+            }
+            
+            // Използване на сканирания баркод
+            useBarcodeBtn.addEventListener('click', function() {
+                const barcode = scannedBarcodeInput.value.trim();
+                if (barcode) {
+                    if (currentScannerTarget === 'add') {
+                        currentBarcodes[barcode] = true;
+                        renderBarcodeList(currentBarcodes, 'barcode-list');
+                        document.getElementById('new-barcode').value = barcode;
+                    } else if (currentScannerTarget === 'edit') {
+                        editBarcodes[barcode] = true;
+                        renderBarcodeList(editBarcodes, 'edit-barcode-list');
+                        document.getElementById('edit-new-barcode').value = barcode;
+                    } else {
+                        // Търсене по баркод
+                        productSearch.value = barcode;
+                        searchProducts();
+                    }
+                    scannerModal.style.display = 'none';
+                } else {
+                    showNotification('Моля, сканирайте баркод първо!', 'error');
+                }
+            });
+            
+            // Отказ от сканиране
+            cancelScanBtn.addEventListener('click', function() {
+                stopScanner();
+                scannerModal.style.display = 'none';
+            });
+            
+            // Търсене на продукти по баркод
+            scanBarcodeBtn.addEventListener('click', function() {
+                currentScannerTarget = 'search';
+                initScanner();
+            });
+            
+            function searchProducts() {
+                const searchTerm = productSearch.value.toLowerCase();
+                const rows = productsTable.getElementsByTagName('tr');
+                
+                for (let row of rows) {
+                    const cells = row.getElementsByTagName('td');
+                    let found = false;
+                    
+                    for (let cell of cells) {
+                        if (cell.textContent.toLowerCase().includes(searchTerm)) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    
+                    row.style.display = found ? '' : 'none';
+                }
+            }
+            
+            productSearch.addEventListener('input', searchProducts);
+            
+            // Експорт на продукти към Excel
+            exportProductsBtn.addEventListener('click', function() {
+                database.ref('products').once('value')
+                    .then(snapshot => {
+                        const products = snapshot.val() || {};
+                        const productsArray = Object.keys(products).map(key => {
+                            const barcodes = products[key].barcodes ? Object.keys(products[key].barcodes).join(', ') : '';
+                            return {
+                                'Код': products[key].code,
+                                'Име': products[key].name,
+                                'Наличност': products[key].stock,
+                                'Цена (лв.)': products[key].price,
+                                'Цена (€)': (products[key].price / 1.95583).toFixed(2),
+                                'Баркодове': barcodes
+                            };
+                        });
+                        
+                        // Създаване на Excel workbook
+                        const wb = XLSX.utils.book_new();
+                        const ws = XLSX.utils.json_to_sheet(productsArray);
+                        XLSX.utils.book_append_sheet(wb, ws, "Продукти");
+                        
+                        // Записване на файл
+                        XLSX.writeFile(wb, `Инвентар_${new Date().toISOString().split('T')[0]}.xlsx`);
+                    })
+                    .catch(error => {
+                        showNotification('Грешка при експортиране: ' + error.message, 'error');
+                    });
+            });
+            
+            // Импорт на продукти от Excel
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        
+                        // Взимаме първия лист
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                        
+                        // Импортиране на продукти
+                        importProductsFromExcel(jsonData);
+                    } catch (error) {
+                        showNotification('Грешка при обработка на файла: ' + error.message, 'error');
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            });
+            
+            function importProductsFromExcel(productsData) {
+                const batch = {};
+                let importedCount = 0;
+                
+                productsData.forEach(item => {
+                    const code = item['Код'] || '';
+                    const name = item['Име'] || '';
+                    const stock = item['Наличност'] || 0;
+                    const price = item['Цена'] || 0;
+                    const barcodes = {};
+                    
+                    // Добавяне на основните баркодове
+                    if (code) barcodes[code] = true;
+                    
+                    // Добавяне на допълнителни баркодове
+                    if (item['Баркодове']) {
+                        const additionalBarcodes = item['Баркодове'].split(',').map(b => b.trim()).filter(b => b);
+                        additionalBarcodes.forEach(b => barcodes[b] = true);
+                    }
+                    
+                    if (code && name) {
+                        const productId = database.ref('products').push().key;
+                        batch[`products/${productId}`] = {
+                            code: code,
+                            name: name,
+                            stock: stock,
+                            price: price,
+                            barcodes: barcodes,
+                            createdAt: new Date().toISOString(),
+                            createdBy: currentUser.id
+                        };
+                        importedCount++;
+                    }
+                });
+                
+                if (importedCount > 0) {
+                    database.ref().update(batch)
+                        .then(() => {
+                            // Добавяне в историята
+                            const historyEntry = {
+                                action: 'Импорт на продукти',
+                                details: `Импортирани ${importedCount} продукта от Excel`,
+                                user: currentUser.id,
+                                userName: currentUser.name,
+                                timestamp: new Date().toISOString()
+                            };
+                            database.ref('history').push(historyEntry);
+                            
+                            showNotification(`Успешно импортирани ${importedCount} продукта!`);
+                            loadProducts();
+                        })
+                        .catch(error => {
+                            showNotification('Грешка при импортиране: ' + error.message, 'error');
+                        });
+                } else {
+                    showNotification('Няма валидни продукти за импорт!', 'error');
+                }
+            }
+            
+            // Зареждане на потребители
+            function loadUsers() {
+                if (currentUser.role !== 'admin') return;
+                
+                database.ref('users').once('value')
+                    .then(snapshot => {
+                        usersTable.innerHTML = '';
+                        const users = snapshot.val() || {};
+                        
+                        Object.keys(users).forEach(key => {
+                            const user = users[key];
+                            const row = usersTable.insertRow();
+                            
+                            row.innerHTML = `
+                                <td>${user.name}</td>
+                                <td>${user.accessCode}</td>
+                                <td>${user.role === 'admin' ? 'Администратор' : 'Потребител'}</td>
+                                <td>
+                                    <button class="btn btn-danger btn-sm delete-user" data-id="${key}" ${key === currentUser.id ? 'disabled' : ''}>
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            `;
+                        });
+                        
+                        // Добавяне на event listeners за бутоните
+                        addUserButtonsListeners();
+                    })
+                    .catch(error => {
+                        showNotification('Грешка при зареждане на потребители: ' + error.message, 'error');
+                    });
+            }
+            
+            function addUserButtonsListeners() {
+                // Добавяне на потребител
+                addUserBtn.addEventListener('click', function() {
+                    document.getElementById('add-user-modal').style.display = 'flex';
+                });
+                
+                // Запазване на потребител
+                saveUserBtn.addEventListener('click', function() {
+                    const fullname = document.getElementById('user-fullname').value.trim();
+                    const accessCode = document.getElementById('user-access-code').value.trim();
+                    const role = document.getElementById('user-role-select').value;
+                    
+                    if (fullname && accessCode && role) {
+                        // Проверка дали кодът вече съществува
+                        database.ref('users').orderByChild('accessCode').equalTo(accessCode).once('value')
+                            .then(snapshot => {
+                                if (snapshot.exists()) {
+                                    throw new Error('Кодът за достъп вече се използва!');
+                                }
+                                
+                                // Създаване на нов потребител
+                                const userData = {
+                                    name: fullname,
+                                    accessCode: accessCode,
+                                    role: role,
+                                    createdAt: new Date().toISOString(),
+                                    createdBy: currentUser.id
+                                };
+                                
+                                return database.ref('users').push(userData);
+                            })
+                            .then(() => {
+                                // Добавяне в историята
+                                const historyEntry = {
+                                    action: 'Добавяне на потребител',
+                                    details: `Добавен потребител: ${fullname} (${accessCode})`,
+                                    user: currentUser.id,
+                                    userName: currentUser.name,
+                                    timestamp: new Date().toISOString()
+                                };
+                                database.ref('history').push(historyEntry);
+                                
+                                showNotification('Потребителят е добавен успешно!');
+                                document.getElementById('add-user-modal').style.display = 'none';
+                                
+                                // Reset форма
+                                document.getElementById('user-fullname').value = '';
+                                document.getElementById('user-access-code').value = '';
+                                
+                                // Презареждане на потребителите
+                                loadUsers();
+                            })
+                            .catch(error => {
+                                showNotification(error.message, 'error');
+                            });
+                    } else {
+                        showNotification('Моля, попълнете всички полета!', 'error');
+                    }
+                });
+                
+                // Изтриване на потребител
+                document.querySelectorAll('.delete-user').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const userId = this.getAttribute('data-id');
+                        showConfirmation('Сигурни ли сте, че искате да изтриете този потребител?', function() {
+                            database.ref('users/' + userId).remove()
+                                .then(() => {
+                                    // Добавяне в историята
+                                    const historyEntry = {
+                                        action: 'Изтриване на потребител',
+                                        details: `Изтрит потребител с ID: ${userId}`,
+                                        user: currentUser.id,
+                                        userName: currentUser.name,
+                                        timestamp: new Date().toISOString()
+                                    };
+                                    database.ref('history').push(historyEntry);
+                                    
+                                    showNotification('Потребителят е изтрит успешно!');
+                                    loadUsers();
+                                })
+                                .catch(error => {
+                                    showNotification('Грешка при изтриване: ' + error.message, 'error');
+                                });
+                        });
+                    });
+                });
+            }
+            
+            // Зареждане на история
+            function loadHistory() {
+                database.ref('history').orderByChild('timestamp').once('value')
+                    .then(snapshot => {
+                        historyTable.innerHTML = '';
+                        const history = snapshot.val() || {};
+                        
+                        // Конвертиране в масив и сортиране по дата (най-новите първи)
+                        const historyArray = Object.keys(history).map(key => {
+                            return { id: key, ...history[key] };
+                        }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                        
+                        historyArray.forEach(entry => {
+                            const row = historyTable.insertRow();
+                            
+                            const date = new Date(entry.timestamp);
+                            const dateString = date.toLocaleDateString('bg-BG') + ' ' + date.toLocaleTimeString('bg-BG');
+                            
+                            row.innerHTML = `
+                                <td>${dateString}</td>
+                                <td>${entry.action}</td>
+                                <td>${entry.userName || entry.user}</td>
+                                <td>${entry.details}</td>
+                            `;
+                        });
+                    })
+                    .catch(error => {
+                        showNotification('Грешка при зареждане на история: ' + error.message, 'error');
+                    });
+            }
+            
+            // Зареждане на активни потребители
+            function loadActiveUsers() {
+                database.ref('activeUsers').on('value', snapshot => {
+                    activeUsersList.innerHTML = '';
+                    const users = snapshot.val() || {};
+                    activeUsers = users;
+                    
+                    Object.keys(users).forEach(userId => {
+                        const user = users[userId];
+                        const userDiv = document.createElement('div');
+                        userDiv.className = 'active-user';
+                        
+                        userDiv.innerHTML = `
+                            <div class="active-user-avatar">${user.name.charAt(0)}</div>
+                            <div>
+                                <div>${user.name}</div>
+                                <small>${user.role === 'admin' ? 'Администратор' : 'Потребител'}</small>
+                            </div>
+                        `;
+                        
+                        activeUsersList.appendChild(userDiv);
+                    });
+                });
+            }
+            
+            // Показване на известие
+            function showNotification(message, type = 'success') {
+                const notification = document.getElementById('notification');
+                const notificationMessage = document.getElementById('notification-message');
+                notificationMessage.textContent = message;
+                
+                // Промяна на класа според типа
+                notification.className = 'notification';
+                notification.classList.add(type === 'error' ? 'error' : type === 'warning' ? 'warning' : 'show');
+                
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 3000);
+            }
+            
+            // Затваряне на модални прозорци
+            document.querySelectorAll('.close, .close-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.modal').forEach(modal => {
+                        modal.style.display = 'none';
+                    });
+                });
+            });
+            
+            // Затваряне на модални прозорци при клик извън тях
+            window.addEventListener('click', function(e) {
+                if (e.target.classList.contains('modal')) {
+                    e.target.style.display = 'none';
+                }
+            });
+            
+            // При затваряне на страницата маркираме потребителя като неактивен
+            window.addEventListener('beforeunload', function() {
+                if (currentUser && currentUser.id) {
+                    database.ref('activeUsers/' + currentUser.id).remove();
+                }
             });
         });
-
-        // Chat
-        function scrollChatToBottom() {
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-
-        function addMessage(sender, message, isSent = false) {
-            const now = new Date();
-            const timeString = now.getHours().toString().padStart(2, '0') + ':' + 
-                              now.getMinutes().toString().padStart(2, '0');
-            
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${isSent ? 'sent' : 'received'}`;
-            messageDiv.innerHTML = `
-                <div class="message-sender">${isSent ? 'Вие' : sender}</div>
-                <div class="message-text">${message}</div>
-                <div class="message-time">${timeString}</div>
-            `;
-            
-            chatMessages.appendChild(messageDiv);
-            scrollChatToBottom();
-        }
-
-        sendMessageBtn.addEventListener('click', () => {
-            const message = chatInput.value.trim();
-            if (message) {
-                addMessage('Теодор', message, true);
-                chatInput.value = '';
-                
-                // Simulate reply after 1-3 seconds
-                setTimeout(() => {
-                    const replies = [
-                        'Разбрах, благодаря!',
-                        'Ще проверя и ще ви уведомя.',
-                        'Това е записано в системата.',
-                        'Имате ли още въпроси?'
-                    ];
-                    const randomReply = replies[Math.floor(Math.random() * replies.length)];
-                    addMessage('Иван', randomReply);
-                }, 1000 + Math.random() * 2000);
-            }
-        });
-
-        // Allow Enter key in chat
-        chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendMessageBtn.click();
-            }
-        });
-
-        // Initial chat messages
-        addMessage('Иван', 'Здравейте, има ли още болтове M6x20?');
-        addMessage('Теодор', 'Да, имаме още 54 броя.', true);
-        addMessage('Мария', 'Току-що импортирах новите цени от Excel.');
-
-        // Initialize the dashboard
-        document.getElementById('dashboard-section').style.display = 'block';
     </script>
 </body>
 </html>
